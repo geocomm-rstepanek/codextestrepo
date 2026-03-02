@@ -4,14 +4,14 @@ export function renderStepHistogram(data){
 
   const width = 1000;
   const height = 260;
-  const margin = 60;
+  const m = { top: 44, right: 28, bottom: 44, left: 56 };
+  svg.attr("viewBox", `0 0 ${width} ${height}`);
 
   if(!data.length) return;
 
   const [minDate, maxDate] = d3.extent(data, d => d.creationDate);
   const totalDays = (maxDate - minDate) / (1000 * 60 * 60 * 24);
   const useDaily = totalDays < 60;
-
   const timeBin = useDaily ? d3.timeDay : d3.timeWeek;
 
   const bins = d3.rollups(
@@ -27,51 +27,57 @@ export function renderStepHistogram(data){
     d.rolling = d3.mean(subset, s => s.count);
   });
 
-  const x = d3.scaleTime().domain([minDate, maxDate]).range([margin, width - margin]);
+  const x = d3.scaleTime().domain([minDate, maxDate]).range([m.left, width - m.right]);
+  const xBars = d3.scaleBand()
+    .domain(bins.map(d => d.date.getTime()))
+    .range([m.left, width - m.right])
+    .padding(0.18);
+
   const y = d3.scaleLinear()
     .domain([0, d3.max(bins, d => Math.max(d.count, d.rolling))])
     .nice()
-    .range([height - margin, margin]);
+    .range([height - m.bottom, m.top]);
 
   svg.append("g")
-    .attr("transform", `translate(${margin},0)`)
-    .call(d3.axisLeft(y).tickSize(-(width - 2*margin)).tickFormat(""))
+    .attr("transform", `translate(${m.left},0)`)
+    .call(d3.axisLeft(y).tickSize(-(width - m.left - m.right)).tickFormat(""))
     .selectAll("line")
     .attr("stroke", "#e5e7eb")
     .attr("stroke-dasharray", "3 3");
 
   svg.append("g")
-    .attr("transform", `translate(0,${height - margin})`)
+    .attr("transform", `translate(0,${height - m.bottom})`)
     .call(d3.axisBottom(x).ticks(useDaily ? d3.timeWeek.every(1) : d3.timeMonth.every(1)))
     .selectAll("text")
     .attr("fill", "#6b7280");
 
   svg.append("g")
-    .attr("transform", `translate(${margin},0)`)
+    .attr("transform", `translate(${m.left},0)`)
     .call(d3.axisLeft(y))
     .selectAll("text")
     .attr("fill", "#6b7280");
-
-  const barWidth = (width - 2*margin) / bins.length * 0.8;
 
   svg.selectAll(".bar")
     .data(bins)
     .join("rect")
     .attr("class","bar")
-    .attr("x", d => x(d.date))
-    .attr("y", height - margin)
-    .attr("width", barWidth)
+    .attr("x", d => xBars(d.date.getTime()))
+    .attr("y", height - m.bottom)
+    .attr("width", xBars.bandwidth())
     .attr("height", 0)
-    .attr("rx", 6)
+    .attr("rx", 5)
     .attr("fill", "#6366f1")
     .attr("opacity", 0.75)
     .transition()
     .duration(700)
     .ease(d3.easeCubicOut)
     .attr("y", d => y(d.count))
-    .attr("height", d => height - margin - y(d.count));
+    .attr("height", d => height - m.bottom - y(d.count));
 
-  const line = d3.line().x(d => x(d.date) + barWidth/2).y(d => y(d.rolling)).curve(d3.curveMonotoneX);
+  const line = d3.line()
+    .x(d => x(d.date))
+    .y(d => y(d.rolling))
+    .curve(d3.curveMonotoneX);
 
   const path = svg.append("path")
     .datum(bins)
@@ -82,7 +88,7 @@ export function renderStepHistogram(data){
 
   const totalLength = path.node().getTotalLength();
   path
-    .attr("stroke-dasharray", totalLength + " " + totalLength)
+    .attr("stroke-dasharray", `${totalLength} ${totalLength}`)
     .attr("stroke-dashoffset", totalLength)
     .transition()
     .duration(900)
@@ -90,8 +96,8 @@ export function renderStepHistogram(data){
     .attr("stroke-dashoffset", 0);
 
   svg.append("text")
-    .attr("x", margin)
-    .attr("y", 25)
+    .attr("x", m.left)
+    .attr("y", 20)
     .attr("font-size", "13px")
     .attr("fill", "#9ca3af")
     .text(useDaily ? "Daily Volume with 7-Day Trend" : "Weekly Volume with 2-Week Trend");
