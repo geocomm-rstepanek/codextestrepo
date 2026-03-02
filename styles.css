@@ -1,0 +1,24 @@
+body { margin:0; font-family: Inter, system-ui; background:#f8fafc; color:#1e293b;}
+.header{padding:30px 40px 10px 40px;}
+h1{margin:0;font-size:26px;font-weight:600;}
+.subtitle{color:#64748b;margin-top:6px;}
+.controls{padding:0 40px 20px 40px; display:flex; gap:20px; flex-wrap:wrap; align-items:center;}
+select,button{padding:8px 14px;border-radius:8px;border:1px solid #e2e8f0;background:white;}
+.dashboard{padding:10px 40px 40px 40px;display:grid;grid-template-columns:repeat(12,1fr);gap:24px;}
+.card{background:white;border-radius:14px;padding:20px;box-shadow:0 4px 18px rgba(15,23,42,0.06);}
+.kpi{grid-column:span 4;}
+.kpi-value{font-size:26px;font-weight:600;}
+.kpi-label{font-size:13px;color:#64748b;margin-top:4px;}
+.chart-third{grid-column:span 4;}
+.chart-half{grid-column:span 6;}
+.axis path,.axis line{stroke:#e2e8f0;}
+.bar{fill:#6366f1;cursor:pointer;}
+.bar.active{fill:#ef4444;}
+.box{fill:#6366f1;opacity:0.6;}
+.median{stroke:#ef4444;stroke-width:2;}
+.whisker{stroke:#334155;}
+.heat-cell{cursor:pointer;stroke:white;stroke-width:1px;}
+.timeline{grid-column:span 12;}
+.geo-point{fill:#ef4444;opacity:0.65;stroke:#fff;stroke-width:0.75px;}
+.map-state{fill:#e2e8f0;stroke:#fff;stroke-width:0.75px;}
+.legend{font-size:12px;color:#64748b;}
