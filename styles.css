@@ -6,7 +6,7 @@ h1{margin:0;font-size:26px;font-weight:600;}
 select,button{padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;background:white;}
 .dashboard{padding:8px 28px 28px 28px;display:grid;grid-template-columns:repeat(12,1fr);gap:16px;}
 .card{background:white;border-radius:14px;padding:14px;box-shadow:0 4px 14px rgba(15,23,42,0.06);overflow:hidden;}
-.card svg{display:block;width:100%;height:auto;}
+.card svg{display:block;height:auto;}
 .card-title{font-size:13px;color:#64748b;margin-bottom:6px;}
 .kpi{grid-column:span 4;}
 .kpi-value{font-size:26px;font-weight:600;}
