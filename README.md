@@ -6,7 +6,8 @@ Interactive D3-based analytics dashboard visualizing:
 - Time to Resolution (TTR)
 - Product Distribution
 - Technician Performance
-- Geographic Distribution (US map + city bubbles)
+
+- Geographic Distribution (US map + city bubbles across 30 continental US cities)
 - Time Filtering (YTD, Quarter, Month, Custom Range)
 
 ## Tech Stack
@@ -35,7 +36,7 @@ Each issue object contains:
   id: number,
   technician: string,
   product: string,
-  customer: string,
+  customer: string, // city name
   city: string,
   lat: number,
   lon: number,
