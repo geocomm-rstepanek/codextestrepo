@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Support Performance Dashboard — Hybrid Time Explorer</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<style>
+body { margin:0; font-family: Inter, system-ui; background:#f8fafc; color:#1e293b;}
+.header{padding:30px 40px 10px 40px;}
+h1{margin:0;font-size:26px;font-weight:600;}
+.subtitle{color:#64748b;margin-top:6px;}
+.controls{padding:0 40px 20px 40px; display:flex; gap:20px; flex-wrap:wrap;}
+select,button{padding:8px 14px;border-radius:8px;border:1px solid #e2e8f0;background:white;}
+.dashboard{padding:10px 40px 40px 40px;display:grid;grid-template-columns:repeat(12,1fr);gap:24px;}
+.card{background:white;border-radius:14px;padding:20px;box-shadow:0 4px 18px rgba(15,23,42,0.06);}
+.kpi{grid-column:span 4;}
+.kpi-value{font-size:26px;font-weight:600;}
+.kpi-label{font-size:13px;color:#64748b;margin-top:4px;}
+.chart-third{grid-column:span 4;}
+.chart-half{grid-column:span 6;}
+.axis path,.axis line{stroke:#e2e8f0;}
+.bar{fill:#6366f1;cursor:pointer;}
+.bar.active{fill:#ef4444;}
+.box{fill:#6366f1;opacity:0.6;}
+.median{stroke:#ef4444;stroke-width:2;}
+.whisker{stroke:#334155;}
+.heat-cell{cursor:pointer;stroke:white;stroke-width:1px;}
+.timeline{grid-column:span 12;}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>Support Performance Dashboard</h1>
+<div class="subtitle">Hybrid Time-Domain Explorer — 2025</div>
+</div>
+
+<div class="controls">
+<select id="techFilter"><option value="All">All Technicians</option></select>
+<select id="timeGranularity">
+<option value="year">Year</option>
+<option value="quarter">Quarter</option>
+<option value="month">Month</option>
+<option value="week">Week</option>
+</select>
+<select id="timeSelection" style="display:none;"></select>
+<button id="resetBrush">Reset Brush</button>
+</div>
+
+<div class="dashboard">
+
+<div class="card timeline"><svg id="timeline" width="1000" height="120"></svg></div>
+
+<div class="card kpi"><div id="totalIssues" class="kpi-value"></div><div class="kpi-label">Total Issues</div></div>
+<div class="card kpi"><div id="avgTTR" class="kpi-value"></div><div class="kpi-label">Average TTR (hrs)</div></div>
+<div class="card kpi"><div id="activeFilters" class="kpi-value"></div><div class="kpi-label">Active Filters</div></div>
+
+<div class="card chart-third"><svg id="productChart" width="350" height="260"></svg></div>
+<div class="card chart-third"><svg id="customerChart" width="350" height="260"></svg></div>
+<div class="card chart-third"><svg id="boxPlot" width="350" height="260"></svg></div>
+<div class="card chart-half"><svg id="heatmap" width="720" height="300"></svg></div>
+<div class="card timeline">
+    <div class="card-title">Ticket Volume (5-Step Time Distribution)</div>
+    <svg id="stepHistogram" width="1000" height="260"></svg>
+</div>
+
+</div>
+
+<script>
+
+// ---------------- DATA ----------------
+const technicians=["Officer Spock","James Kirk","Leonard McCoy","Janice Rand","Montgomery Scott"];
+const products=["Maps","RSOS","GDH","Indoors"];
+const customers=["West Region","East Region","North Region","South Region"];
+
+const TOTAL_ISSUES=1200,MIN_PER_TECH=130;
+
+function rc(a){return a[Math.floor(Math.random()*a.length)]}
+function rf(min,max){return Math.round((Math.random()*(max-min)+min)*10)/10}
+function rd(){return new Date(2025,0,1+Math.random()*350)}
+function addH(d,h){return new Date(d.getTime()+h*3600000)}
+
+let allocation={};technicians.forEach(t=>allocation[t]=MIN_PER_TECH);
+let remaining=TOTAL_ISSUES-technicians.length*MIN_PER_TECH;
+while(remaining>0){allocation[rc(technicians)]++;remaining--;}
+
+let issueData=[],id=1;
+technicians.forEach(t=>{
+for(let i=0;i<allocation[t];i++){
+const c=rd();const ttr=rf(2,120);
+issueData.push({
+id:id++,technician:t,
+product:rc(products),
+customer:rc(customers),
+creationDate:c,
+resolutionDate:addH(c,ttr),
+ttrHours:ttr});
+}});
+
+// ---------------- STATE ----------------
+let selectedProduct=null;
+let selectedCustomer=null;
+let timeGranularity="year";
+let timeSelection=null;
+let brushedRange=null;
+let brush;
+
+// Populate tech filter
+const techFilter=d3.select("#techFilter");
+technicians.forEach(t=>techFilter.append("option").attr("value",t).text(t));
+
+// ---------------- TIME FILTER ----------------
+function timeFilter(d){
+if(brushedRange){
+return d.creationDate>=brushedRange[0] && d.creationDate<=brushedRange[1];
+}
+if(timeGranularity==="year") return true;
+const date=d.creationDate;
+if(timeGranularity==="quarter"){
+return Math.floor(date.getMonth()/3)+1===+timeSelection;
+}
+if(timeGranularity==="month"){
+return date.getMonth()===+timeSelection;
+}
+if(timeGranularity==="week"){
+return d3.timeWeek.count(d3.timeYear(date),date)===+timeSelection;
+}
+return true;
+}
+
+function getFiltered(){
+const tech=techFilter.node().value;
+return issueData.filter(d=>
+(tech==="All"||d.technician===tech) &&
+(!selectedProduct||d.product===selectedProduct) &&
+(!selectedCustomer||d.customer===selectedCustomer) &&
+timeFilter(d)
+);
+}
+
+// ---------------- TIME SELECTOR ----------------
+const granSel=d3.select("#timeGranularity");
+const timeSel=d3.select("#timeSelection");
+
+function updateTimeSelector(){
+timeSel.html("");
+if(timeGranularity==="year"){
+timeSel.style("display","none");
+timeSelection=null;
+return;
+}
+timeSel.style("display","inline-block");
+if(timeGranularity==="quarter"){
+["1","2","3","4"].forEach(q=>timeSel.append("option").attr("value",q).text("Q"+q));
+}
+if(timeGranularity==="month"){
+d3.range(12).forEach(m=>timeSel.append("option").attr("value",m)
+.text(d3.timeFormat("%B")(new Date(2025,m,1))));
+}
+if(timeGranularity==="week"){
+d3.range(52).forEach(w=>timeSel.append("option").attr("value",w).text("Week "+(w+1)));
+}
+timeSelection=timeSel.node().value;
+}
+
+granSel.on("change",()=>{
+timeGranularity=granSel.node().value;
+brushedRange=null;
+updateTimeSelector();
+render();
+});
+
+timeSel.on("change",()=>{
+timeSelection=timeSel.node().value;
+render();
+});
+
+// ---------------- TIMELINE ----------------
+function renderTimeline(){
+const svg=d3.select("#timeline");
+svg.selectAll("*").remove();
+const m=40,w=1000,h=120;
+
+const x=d3.scaleTime()
+.domain(d3.extent(issueData,d=>d.creationDate))
+.range([m,w-m]);
+
+const monthly=d3.rollups(issueData,v=>v.length,d=>d3.timeMonth(d.creationDate))
+.map(d=>({date:d[0],value:d[1]}))
+.sort((a,b)=>a.date-b.date);
+
+const y=d3.scaleLinear().domain([0,d3.max(monthly,d=>d.value)]).range([h-m,m]);
+
+svg.append("path")
+.datum(monthly)
+.attr("fill","none")
+.attr("stroke","#6366f1")
+.attr("stroke-width",2)
+.attr("d",d3.line().x(d=>x(d.date)).y(d=>y(d.value)));
+
+svg.append("g").attr("transform",`translate(0,${h-m})`).call(d3.axisBottom(x));
+
+brush=d3.brushX()
+.extent([[m,m],[w-m,h-m]])
+.on("end",(event)=>{
+if(!event.selection){brushedRange=null;render();return;}
+const [x0,x1]=event.selection.map(x.invert);
+brushedRange=[x0,x1];
+render();
+});
+
+svg.append("g").attr("class","brush").call(brush);
+}
+
+d3.select("#resetBrush").on("click",()=>{
+brushedRange=null;
+d3.select("#timeline").select(".brush").call(brush.move,null);
+render();
+});
+
+// ---------------- KPI + FILTER TEXT ----------------
+function updateKPIs(data){
+d3.select("#totalIssues").text(data.length);
+d3.select("#avgTTR").text(data.length?d3.mean(data,d=>d.ttrHours).toFixed(1):"-");
+
+let filters=[];
+if(techFilter.node().value!=="All") filters.push(techFilter.node().value);
+if(selectedProduct) filters.push(selectedProduct);
+if(selectedCustomer) filters.push(selectedCustomer);
+if(brushedRange) filters.push("Custom Range");
+d3.select("#activeFilters").text(filters.length?filters.join(" | "):"None");
+}
+
+// ---------------- PRODUCT ----------------
+function renderProduct(data){
+const svg=d3.select("#productChart");
+svg.selectAll("*").remove();
+const m=50,w=350,h=260;
+
+const agg=d3.rollups(data,v=>v.length,d=>d.product)
+.map(d=>({key:d[0],value:d[1]}));
+
+const x=d3.scaleBand().domain(products).range([m,w-m]).padding(0.3);
+const y=d3.scaleLinear().domain([0,d3.max(agg,d=>d.value)||1]).nice().range([h-m,m]);
+
+svg.selectAll(".bar")
+.data(agg,d=>d.key)
+.enter().append("rect")
+.attr("class",d=>"bar"+(selectedProduct===d.key?" active":""))
+.attr("x",d=>x(d.key))
+.attr("width",x.bandwidth())
+.attr("y",h-m)
+.attr("height",0)
+.on("click",(e,d)=>{selectedProduct=selectedProduct===d.key?null:d.key;render();})
+.transition().duration(600)
+.attr("y",d=>y(d.value))
+.attr("height",d=>h-m-y(d.value));
+
+svg.append("g").attr("transform",`translate(0,${h-m})`).call(d3.axisBottom(x));
+}
+
+// ---------------- CUSTOMER ----------------
+function renderCustomer(data){
+const svg=d3.select("#customerChart");
+svg.selectAll("*").remove();
+const m=50,w=350,h=260;
+
+const agg=d3.rollups(data,v=>v.length,d=>d.customer)
+.map(d=>({key:d[0],value:d[1]}));
+
+const x=d3.scaleBand().domain(customers).range([m,w-m]).padding(0.3);
+const y=d3.scaleLinear().domain([0,d3.max(agg,d=>d.value)||1]).nice().range([h-m,m]);
+
+svg.selectAll(".bar")
+.data(agg,d=>d.key)
+.enter().append("rect")
+.attr("class",d=>"bar"+(selectedCustomer===d.key?" active":""))
+.attr("x",d=>x(d.key))
+.attr("width",x.bandwidth())
+.attr("y",h-m)
+.attr("height",0)
+.on("click",(e,d)=>{selectedCustomer=selectedCustomer===d.key?null:d.key;render();})
+.transition().duration(600)
+.attr("y",d=>y(d.value))
+.attr("height",d=>h-m-y(d.value));
+
+svg.append("g").attr("transform",`translate(0,${h-m})`)
+.call(d3.axisBottom(x))
+.selectAll("text")
+.attr("transform","rotate(-30)")
+.style("text-anchor","end");
+}
+
+// ---------------- HEATMAP ----------------
+function renderHeatmap(data){
+const svg=d3.select("#heatmap");
+svg.selectAll("*").remove();
+const m=60,w=720,h=300;
+
+const matrix=[];
+products.forEach(p=>{
+customers.forEach(c=>{
+matrix.push({
+product:p,
+customer:c,
+value:data.filter(d=>d.product===p && d.customer===c).length
+});
+});
+});
+
+const x=d3.scaleBand().domain(products).range([m,w-m]).padding(0.05);
+const y=d3.scaleBand().domain(customers).range([m,h-m]).padding(0.05);
+const color=d3.scaleSequential(d3.interpolateBlues)
+.domain([0,d3.max(matrix,d=>d.value)||1]);
+
+svg.selectAll(".heat-cell")
+.data(matrix)
+.enter().append("rect")
+.attr("class","heat-cell")
+.attr("x",d=>x(d.product))
+.attr("y",d=>y(d.customer))
+.attr("width",x.bandwidth())
+.attr("height",y.bandwidth())
+.attr("fill",d=>color(d.value))
+.on("click",(e,d)=>{selectedProduct=d.product;selectedCustomer=d.customer;render();});
+
+svg.append("g").attr("transform",`translate(0,${m})`).call(d3.axisLeft(y));
+svg.append("g").attr("transform",`translate(0,${h-m})`).call(d3.axisBottom(x));
+}
+
+// ---------------- BOX PLOT ----------------
+function renderBox(data){
+const svg=d3.select("#boxPlot");
+svg.selectAll("*").remove();
+const m=50,w=350,h=260;
+
+const grouped=d3.groups(data,d=>d.technician);
+
+const stats=grouped.map(([tech,values])=>{
+const ttrs=values.map(d=>d.ttrHours).sort(d3.ascending);
+if(!ttrs.length) return null;
+return {
+tech,
+q1:d3.quantile(ttrs,0.25),
+median:d3.quantile(ttrs,0.5),
+q3:d3.quantile(ttrs,0.75),
+min:d3.min(ttrs),
+max:d3.max(ttrs)
+};
+}).filter(Boolean);
+
+const x=d3.scaleBand().domain(stats.map(d=>d.tech)).range([m,w-m]).padding(0.4);
+const y=d3.scaleLinear().domain([0,d3.max(stats,d=>d.max)||1]).nice().range([h-m,m]);
+
+svg.append("g").attr("transform",`translate(0,${h-m})`)
+.call(d3.axisBottom(x))
+.selectAll("text")
+.attr("transform","rotate(-30)")
+.style("text-anchor","end");
+
+svg.append("g").attr("transform",`translate(${m},0)`)
+.call(d3.axisLeft(y));
+
+stats.forEach(d=>{
+const cx=x(d.tech)+x.bandwidth()/2;
+svg.append("line").attr("class","whisker")
+.attr("x1",cx).attr("x2",cx)
+.attr("y1",y(d.min)).attr("y2",y(d.max));
+
+svg.append("rect").attr("class","box")
+.attr("x",x(d.tech))
+.attr("y",y(d.q3))
+.attr("width",x.bandwidth())
+.attr("height",y(d.q1)-y(d.q3));
+
+svg.append("line").attr("class","median")
+.attr("x1",x(d.tech))
+.attr("x2",x(d.tech)+x.bandwidth())
+.attr("y1",y(d.median))
+.attr("y2",y(d.median));
+});
+}
+
+// ---------------- bar chart --------------
+
+function renderStepHistogram(data){
+
+    const svg = d3.select("#stepHistogram");
+    svg.selectAll("*").remove();
+
+    const width = 1000;
+    const height = 260;
+    const margin = 60;
+
+    if(!data.length) return;
+
+    const [minDate, maxDate] = d3.extent(data, d => d.creationDate);
+    const totalDays = (maxDate - minDate) / (1000 * 60 * 60 * 24);
+    const useDaily = totalDays < 60;
+
+    const timeBin = useDaily ? d3.timeDay : d3.timeWeek;
+
+    // Aggregate volume
+    const bins = d3.rollups(
+        data,
+        v => v.length,
+        d => timeBin.floor(d.creationDate)
+    ).map(([date, count]) => ({
+        date,
+        count
+    })).sort((a,b) => a.date - b.date);
+
+    // 7-day rolling average (or 2-week equivalent when weekly)
+    const windowSize = useDaily ? 7 : 2;
+
+    bins.forEach((d,i) => {
+        const start = Math.max(0, i - windowSize + 1);
+        const subset = bins.slice(start, i + 1);
+        d.rolling = d3.mean(subset, s => s.count);
+    });
+
+    const x = d3.scaleTime()
+        .domain([minDate, maxDate])
+        .range([margin, width - margin]);
+
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(bins, d => Math.max(d.count, d.rolling))])
+        .nice()
+        .range([height - margin, margin]);
+
+    // Background gridlines
+    svg.append("g")
+        .attr("transform", `translate(${margin},0)`)
+        .call(
+            d3.axisLeft(y)
+                .tickSize(-(width - 2*margin))
+                .tickFormat("")
+        )
+        .selectAll("line")
+        .attr("stroke", "#e5e7eb")
+        .attr("stroke-dasharray", "3 3");
+
+    // X axis
+    svg.append("g")
+        .attr("transform", `translate(0,${height - margin})`)
+        .call(
+            d3.axisBottom(x)
+                .ticks(useDaily ? d3.timeWeek.every(1) : d3.timeMonth.every(1))
+        )
+        .selectAll("text")
+        .attr("fill", "#6b7280");
+
+    // Y axis
+    svg.append("g")
+        .attr("transform", `translate(${margin},0)`)
+        .call(d3.axisLeft(y))
+        .selectAll("text")
+        .attr("fill", "#6b7280");
+
+    // Bars
+    const barWidth = (width - 2*margin) / bins.length * 0.8;
+
+    svg.selectAll(".bar")
+        .data(bins)
+        .join("rect")
+        .attr("class","bar")
+        .attr("x", d => x(d.date))
+        .attr("y", height - margin)
+        .attr("width", barWidth)
+        .attr("height", 0)
+        .attr("rx", 6)
+        .attr("fill", "#6366f1")
+        .attr("opacity", 0.75)
+        .transition()
+        .duration(700)
+        .ease(d3.easeCubicOut)
+        .attr("y", d => y(d.count))
+        .attr("height", d => height - margin - y(d.count));
+
+    // 7-day Rolling Line
+    const line = d3.line()
+        .x(d => x(d.date) + barWidth/2)
+        .y(d => y(d.rolling))
+        .curve(d3.curveMonotoneX);
+
+    const path = svg.append("path")
+        .datum(bins)
+        .attr("fill","none")
+        .attr("stroke","#10b981")
+        .attr("stroke-width",2.5)
+        .attr("d", line);
+
+    // Animate line draw
+    const totalLength = path.node().getTotalLength();
+
+    path
+        .attr("stroke-dasharray", totalLength + " " + totalLength)
+        .attr("stroke-dashoffset", totalLength)
+        .transition()
+        .duration(900)
+        .ease(d3.easeCubicOut)
+        .attr("stroke-dashoffset", 0);
+
+    // Title label
+    svg.append("text")
+        .attr("x", margin)
+        .attr("y", 25)
+        .attr("font-size", "13px")
+        .attr("fill", "#9ca3af")
+        .text(useDaily ? "Daily Volume with 7-Day Trend" : "Weekly Volume with 2-Week Trend");
+}
+
+// ---------------- MAIN ----------------
+function render(){
+    const data = getFiltered();
+
+    updateKPIs(data);
+    renderProduct(data);
+    renderCustomer(data);
+    renderHeatmap(data);
+    renderBox(data);
+    renderStepHistogram(data);  // NEW
+}
+
+updateTimeSelector();
+renderTimeline();
+render();
+
+</script>
+</body>
+</html>
