@@ -2,9 +2,9 @@
   "name": "support-dashboard",
   "version": "1.0.0",
   "description": "Interactive D3 dashboard for support issue analytics",
-  "main": "index.html",
+  "main": "dashboard.html",
   "scripts": {
-    "start": "npx serve ."
+    "start": "python3 -m http.server 3000"
   },
   "dependencies": {},
   "devDependencies": {}
