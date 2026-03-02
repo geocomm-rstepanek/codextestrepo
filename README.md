@@ -6,42 +6,52 @@ Interactive D3-based analytics dashboard visualizing:
 - Time to Resolution (TTR)
 - Product Distribution
 - Technician Performance
-- Geographic Distribution
+- Geographic Distribution (US map + city bubbles)
 - Time Filtering (YTD, Quarter, Month, Custom Range)
 
 ## Tech Stack
 
 - D3 v7
-- Vanilla JavaScript
+- Vanilla JavaScript (ES modules)
 - HTML/CSS
-- GeoJSON (US Map)
+- GeoJSON/TopoJSON (US Map)
 
 ## Architecture Overview
 
 The dashboard follows a modular chart architecture:
 
-- `state.js` manages global UI state
+- `state.js` manages global UI state + sample data generation
 - `filters.js` manages data filtering logic
 - `charts/` contains isolated chart modules
-- `dashboard.js` orchestrates rendering
+- `dashboard.js` orchestrates control wiring + rendering
+- `styles.css` contains shared styles
 
 ## Data Model
 
 Each issue object contains:
 
+```js
 {
-id: number,
-technician: string,
-product: string,
-customer: string,
-city: string,
-lat: number,
-lon: number,
-creationDate: Date,
-resolutionDate: Date,
-ttrHours: number
+  id: number,
+  technician: string,
+  product: string,
+  customer: string,
+  city: string,
+  lat: number,
+  lon: number,
+  creationDate: Date,
+  resolutionDate: Date,
+  ttrHours: number
 }
+```
 
+## Run locally
+
+```bash
+npm start
+```
+
+Then open `http://localhost:3000/dashboard.html` (requires Python 3 for the local static server).
 
 ## Goals
 
