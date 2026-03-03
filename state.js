@@ -1,5 +1,6 @@
 export const technicians=["Officer Spock","James Kirk","Leonard McCoy","Janice Rand","Montgomery Scott"];
 export const products=["Maps","RSOS","GDH","Indoors"];
+export const severities=["Critical","High","Medium","Low"];
 
 export const cities=[
   {city:"Seattle",lat:47.6062,lon:-122.3321},
@@ -43,6 +44,13 @@ function rc(a){return a[Math.floor(Math.random()*a.length)];}
 function rf(min,max){return Math.round((Math.random()*(max-min)+min)*10)/10;}
 function rd(){return new Date(2025,0,1+Math.random()*350);}
 function addH(d,h){return new Date(d.getTime()+h*3600000);}
+function weightedSeverity(){
+  const r=Math.random();
+  if(r<0.08) return "Critical";
+  if(r<0.28) return "High";
+  if(r<0.68) return "Medium";
+  return "Low";
+}
 
 let allocation={};
 technicians.forEach(t=>allocation[t]=MIN_PER_TECH);
@@ -64,6 +72,7 @@ technicians.forEach(t=>{
       city:geo.city,
       lat:geo.lat,
       lon:geo.lon,
+      severity:weightedSeverity(),
       creationDate:c,
       resolutionDate:addH(c,ttr),
       ttrHours:ttr
@@ -74,6 +83,7 @@ technicians.forEach(t=>{
 export const uiState={
   selectedProduct:null,
   selectedCustomer:null,
+  selectedSeverity:null,
   timeGranularity:"ytd",
   timeSelection:null,
   brushedRange:null,

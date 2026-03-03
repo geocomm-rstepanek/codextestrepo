@@ -12,6 +12,7 @@ select,button{padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;backgr
 .kpi-value{font-size:26px;font-weight:600;}
 .kpi-label{font-size:13px;color:#64748b;margin-top:4px;}
 .chart-third{grid-column:span 4;}
+.chart-quarter{grid-column:span 3;}
 .chart-half{grid-column:span 6;}
 .axis path,.axis line{stroke:#e2e8f0;}
 .bar{fill:#6366f1;cursor:pointer;}

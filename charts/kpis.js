@@ -8,6 +8,7 @@ export function updateKPIs(data){
   if(uiState.selectedTech!=="All") filters.push(uiState.selectedTech);
   if(uiState.selectedProduct) filters.push(uiState.selectedProduct);
   if(uiState.selectedCustomer) filters.push(uiState.selectedCustomer);
+  if(uiState.selectedSeverity) filters.push(uiState.selectedSeverity);
   if(uiState.brushedRange) filters.push("Custom Range");
   d3.select("#activeFilters").text(filters.length?filters.join(" | "):"None");
 }

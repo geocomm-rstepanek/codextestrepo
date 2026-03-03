@@ -24,6 +24,7 @@ export function getFiltered(){
     (uiState.selectedTech==="All"||d.technician===uiState.selectedTech) &&
     (!uiState.selectedProduct||d.product===uiState.selectedProduct) &&
     (!uiState.selectedCustomer||d.customer===uiState.selectedCustomer) &&
+    (!uiState.selectedSeverity||d.severity===uiState.selectedSeverity) &&
     timeFilter(d)
   );
 }

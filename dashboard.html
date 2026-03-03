@@ -15,6 +15,7 @@
 
 <div class="controls">
   <select id="techFilter"><option value="All">All Technicians</option></select>
+  <select id="severityFilter"></select>
   <select id="timeGranularity">
     <option value="ytd">YTD</option>
     <option value="quarter">Quarter</option>
@@ -31,9 +32,10 @@
   <div class="card kpi"><div id="avgTTR" class="kpi-value"></div><div class="kpi-label">Average TTR (hrs)</div></div>
   <div class="card kpi"><div id="activeFilters" class="kpi-value"></div><div class="kpi-label">Active Filters</div></div>
 
-  <div class="card chart-third"><svg id="productChart" width="350" height="260"></svg></div>
-  <div class="card chart-third"><svg id="customerChart" width="350" height="260"></svg></div>
-  <div class="card chart-third"><svg id="boxPlot" width="350" height="260"></svg></div>
+  <div class="card chart-quarter"><svg id="productChart" width="350" height="260"></svg></div>
+  <div class="card chart-quarter"><svg id="customerChart" width="350" height="260"></svg></div>
+  <div class="card chart-quarter"><svg id="severityChart" width="350" height="260"></svg></div>
+  <div class="card chart-quarter"><svg id="boxPlot" width="350" height="260"></svg></div>
 
   <div class="card chart-half"><svg id="heatmap" width="720" height="420"></svg></div>
   <div class="card chart-half">

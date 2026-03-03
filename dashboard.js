@@ -1,4 +1,4 @@
-import { technicians, uiState } from "./state.js";
+import { technicians, severities, uiState } from "./state.js";
 import { getFiltered } from "./filters.js";
 import { renderTimeline } from "./charts/timeline.js";
 import { updateKPIs } from "./charts/kpis.js";
@@ -8,9 +8,14 @@ import { renderHeatmap } from "./charts/heatmap.js";
 import { renderBox } from "./charts/boxplot.js";
 import { renderStepHistogram } from "./charts/stepHistogram.js";
 import { renderGeo } from "./charts/geo.js";
+import { renderSeverity } from "./charts/severity.js";
 
 const techFilter=d3.select("#techFilter");
 technicians.forEach(t=>techFilter.append("option").attr("value",t).text(t));
+
+const severityFilter=d3.select("#severityFilter");
+severityFilter.append("option").attr("value","All").text("All Severities");
+severities.forEach(level=>severityFilter.append("option").attr("value",level).text(level));
 
 const granSel=d3.select("#timeGranularity");
 const timeSel=d3.select("#timeSelection");
@@ -50,11 +55,17 @@ techFilter.on("change",()=>{
   render();
 });
 
+severityFilter.on("change",()=>{
+  uiState.selectedSeverity=severityFilter.node().value==="All"?null:severityFilter.node().value;
+  render();
+});
+
 async function render(){
   const data=getFiltered();
   updateKPIs(data);
   renderProduct(data, render);
   renderCustomer(data, render);
+  renderSeverity(data, render);
   renderHeatmap(data, render);
   renderBox(data);
   renderStepHistogram(data);

@@ -5,6 +5,7 @@ Interactive D3-based analytics dashboard visualizing:
 - Issue Volume
 - Time to Resolution (TTR)
 - Product Distribution
+- Severity Distribution
 - Technician Performance
 - Geographic Distribution (US map + city bubbles across 30 continental US cities)
 - Time Filtering (YTD, Quarter, Month, Custom Range)
@@ -25,6 +26,7 @@ The dashboard follows a modular chart architecture:
 - `charts/` contains isolated chart modules
 - `dashboard.js` orchestrates control wiring + rendering
 - `styles.css` contains shared styles
+- `ARCHITECTURE.md` documents component responsibilities and data flow
 
 ## Data Model
 
@@ -39,6 +41,7 @@ Each issue object contains:
   city: string,
   lat: number,
   lon: number,
+  severity: "Critical" | "High" | "Medium" | "Low",
   creationDate: Date,
   resolutionDate: Date,
   ttrHours: number
