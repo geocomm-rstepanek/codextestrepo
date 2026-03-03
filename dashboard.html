@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Support Performance Dashboard — Hybrid Time Explorer</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="header">
+  <h1>Support Performance Dashboard</h1>
+  <div class="subtitle">Hybrid Time-Domain Explorer — 2025</div>
+</div>
+
+<div class="controls">
+  <select id="techFilter"><option value="All">All Technicians</option></select>
+  <select id="severityFilter"></select>
+  <select id="timeGranularity">
+    <option value="ytd">YTD</option>
+    <option value="quarter">Quarter</option>
+    <option value="month">Month</option>
+  </select>
+  <select id="timeSelection" style="display:none;"></select>
+  <button id="resetBrush">Reset Custom Range</button>
+</div>
+
+<div class="dashboard">
+  <div class="card timeline"><svg id="timeline" width="1000" height="120"></svg></div>
+
+  <div class="card kpi"><div id="totalIssues" class="kpi-value"></div><div class="kpi-label">Total Issues</div></div>
+  <div class="card kpi"><div id="avgTTR" class="kpi-value"></div><div class="kpi-label">Average TTR (hrs)</div></div>
+  <div class="card kpi"><div id="activeFilters" class="kpi-value"></div><div class="kpi-label">Active Filters</div></div>
+
+  <div class="card chart-quarter"><svg id="productChart" width="350" height="260"></svg></div>
+  <div class="card chart-quarter"><svg id="customerChart" width="350" height="260"></svg></div>
+  <div class="card chart-quarter"><svg id="severityChart" width="350" height="260"></svg></div>
+  <div class="card chart-quarter"><svg id="boxPlot" width="350" height="260"></svg></div>
+
+  <div class="card chart-half"><svg id="heatmap" width="720" height="420"></svg></div>
+  <div class="card chart-half">
+    <div class="legend">Geographic Distribution by City (US)</div>
+    <svg id="geoMap" width="720" height="320"></svg>
+  </div>
+
+  <div class="card timeline">
+    <div class="card-title">Ticket Volume (5-Step Time Distribution)</div>
+    <svg id="stepHistogram" width="1000" height="260"></svg>
+  </div>
+</div>
+
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>
